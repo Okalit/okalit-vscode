@@ -1,0 +1,57 @@
+{
+  "name": "okalit-language-support",
+  "displayName": "Okalit Language Support",
+  "description": "Syntax highlighting for Okalit .ok files",
+  "version": "0.0.1",
+  "publisher": "okalit",
+  "icon": "./okalit.png",
+  "main": "./extension.js",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "activationEvents": [
+    "onLanguage:okalit"
+  ],
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "okalit",
+        "aliases": [
+          "Okalit",
+          "okalit"
+        ],
+        "extensions": [
+          ".ok"
+        ],
+        "icon": {
+          "light": "./okalit.png",
+          "dark": "./okalit.png"
+        },
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "okalit",
+        "scopeName": "source.okalit",
+        "path": "./syntaxes/okalit.tmLanguage.json"
+      },
+      {
+        "scopeName": "okalit.html-injection",
+        "path": "./syntaxes/okalit-html-injection.tmLanguage.json",
+        "injectTo": [
+          "text.html.basic"
+        ]
+      }
+    ]
+  },
+  "dependencies": {
+    "typescript": "^5.9.3"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}

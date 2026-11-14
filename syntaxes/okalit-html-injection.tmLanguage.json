@@ -1,0 +1,17 @@
+{
+  "scopeName": "okalit.html-injection",
+  "injectionSelector": "L:source.okalit meta.section.render.okalit text.html.basic meta.tag",
+  "patterns": [
+    {
+      "match": "([.@])([A-Za-z_][\\w:-]*)(?=\\s*=)",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.attribute.okalit"
+        },
+        "2": {
+          "name": "entity.other.attribute-name.okalit"
+        }
+      }
+    }
+  ]
+}
