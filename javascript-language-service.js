@@ -117,6 +117,22 @@ function createVirtualDocument(source, filename, ts) {
   append("import { Okalit as __Oakalit } from '@okalit/core';\n");
   if (sections.has('script')) append(sections.get('script').body, 'script');
   append('\nconst __okalitConfig = {};\nclass __OakalitIntellisense extends __Oakalit {\n');
+  const props = extractReactiveProps(sections, ts);
+  for (const prop of props) {
+    const signalType = `{ value: ${prop.type}, get: () => ${prop.type}, set: (value: ${prop.type}) => void }`;
+    append(`\n/** @returns {${signalType}} */\nget `);
+    const generatedStart = code.length;
+    append(prop.name);
+    segments.push({
+      sectionName: 'prop',
+      sourceStart: prop.sourceStart,
+      sourceEnd: prop.sourceStart + prop.name.length,
+      generatedStart,
+      generatedEnd: code.length,
+    });
+    append(`() { throw new Error('Virtual reactive property'); }\n`);
+    append(`/** @param {${prop.type} | ${signalType}} value */\nset ${prop.name}(value) {}\n`);
+  }
   if (sections.has('logic')) append(sections.get('logic').body, 'logic');
   append('\n}\n');
 
@@ -126,6 +142,54 @@ function createVirtualDocument(source, filename, ts) {
     code,
     segments,
   };
+}
+
+function extractReactiveProps(sections, ts) {
+  const role = ['component', 'page', 'module', 'main'].find(name => sections.has(name));
+  if (!role) return [];
+  const section = sections.get(role);
+  const prefix = 'const config = ({';
+  const file = ts.createSourceFile('role.js', `${prefix}${section.body}});`, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  const expression = file.statements[0]?.declarationList?.declarations[0]?.initializer;
+  if (!expression || !ts.isParenthesizedExpression(expression) || !ts.isObjectLiteralExpression(expression.expression)) return [];
+  const propertyName = node => node && (ts.isIdentifier(node) || ts.isStringLiteral(node)) ? node.text : null;
+  const props = expression.expression.properties.find(property => propertyName(property.name) === 'props');
+  if (!props || !ts.isPropertyAssignment(props)) return [];
+  const definitions = ts.isArrayLiteralExpression(props.initializer) ? props.initializer.elements : [props.initializer];
+  const result = new Map();
+  const types = { String: 'string', Number: 'number', Boolean: 'boolean', Array: 'Array<any>', Object: 'Object', Date: 'Date' };
+  for (const definition of definitions) {
+    if (!ts.isObjectLiteralExpression(definition)) continue;
+    for (const property of definition.properties) {
+      const name = propertyName(property.name);
+      if (!name || !ts.isPropertyAssignment(property) || !ts.isObjectLiteralExpression(property.initializer)) continue;
+      const type = property.initializer.properties.find(item => propertyName(item.name) === 'type');
+      const value = property.initializer.properties.find(item => propertyName(item.name) === 'value');
+      let inferred = '*';
+      if (type && ts.isPropertyAssignment(type) && ts.isIdentifier(type.initializer)) {
+        inferred = types[type.initializer.text] || `InstanceType<typeof ${type.initializer.text}>`;
+      } else if (value && ts.isPropertyAssignment(value)) {
+        const initial = value.initializer;
+        if (ts.isStringLiteral(initial)) inferred = 'string';
+        else if (ts.isNumericLiteral(initial)) inferred = 'number';
+        else if ([ts.SyntaxKind.TrueKeyword, ts.SyntaxKind.FalseKeyword].includes(initial.kind)) inferred = 'boolean';
+        else if (ts.isArrayLiteralExpression(initial)) inferred = 'Array<any>';
+        else if (ts.isObjectLiteralExpression(initial)) inferred = 'Object';
+      }
+      result.set(name, {
+        name: property.name.getText(file),
+        type: inferred,
+        sourceStart: section.bodyStart + property.name.getStart(file) - prefix.length,
+      });
+    }
+  }
+  // Explicit class members already participate in normal JavaScript inference.
+  const logic = sections.get('logic');
+  if (logic) {
+    const file = ts.createSourceFile('logic.js', `class Logic {${logic.body}}`, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+    for (const member of file.statements[0]?.members || []) result.delete(propertyName(member.name));
+  }
+  return [...result.values()];
 }
 
 function findSegmentAtSourceOffset(virtualDocument, offset) {

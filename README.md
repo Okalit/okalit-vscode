@@ -33,6 +33,26 @@ as class members. IntelliSense includes symbol completion, hover information,
 go-to-definition, find references, signature help, and mapped JavaScript
 diagnostics for those blocks.
 
+Reactive properties declared in the role's `props` are included in the virtual
+class used by IntelliSense. Both the named-object format and the legacy array
+of prop definitions work with `@component`, `@page`, `@module` and `@main`.
+For example, declaring `components: { type: Array, value: [] }` exposes
+`this.components.value`, `.get()` and `.set()` inside `@logic`, and
+go-to-definition returns to the prop declaration.
+
+String, Number and Boolean props retain their corresponding value types;
+Array, Object and Date constructors are also recognized. Arrays without an
+element schema remain broadly typed, not a validated model of their contents.
+Simple default values are used when no constructor is provided. Explicit
+class members in `@logic` keep their existing JavaScript inference instead of
+being replaced by generated declarations. Unknown properties and incompatible
+typed assignments still produce diagnostics; this feature does not suppress
+JavaScript errors globally.
+
+After changing extension code, reload the Extension Development Host. An
+already-installed Marketplace version will only get these changes after a
+new extension release is installed.
+
 Run the manifest and grammar checks with:
 
 ```sh
