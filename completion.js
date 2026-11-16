@@ -2,6 +2,7 @@ const SECTION_NAMES = [
   'script',
   'logic',
   'render',
+  'template',
   'component',
   'page',
   'module',
@@ -11,21 +12,13 @@ const SECTION_NAMES = [
 const ROLE_NAMES = new Set(['component', 'page', 'module', 'main']);
 
 function isTopLevel(source) {
-  let openIndent = null;
-
-  for (const line of source.split(/\r?\n/)) {
-    if (openIndent !== null) {
-      if (new RegExp(`^${openIndent}\\}\\s*$`).test(line)) {
-        openIndent = null;
-      }
-      continue;
-    }
-
-    const section = line.match(/^([ \t]*)@(script|logic|render|component|page|module|main)\b.*\{/);
-    if (section) openIndent = section[1];
-  }
-
-  return openIndent === null;
+  const { extractSections } = require('./javascript-language-service');
+  const sections = extractSections(source, require('typescript'));
+  const last = [...sections.values()].at(-1);
+  if (last?.bodyEnd === source.length) return false;
+  const remainder = source.slice(last ? last.bodyEnd + 1 : 0);
+  // A partial declaration header is not a place for another top-level block.
+  return !/@template\s+[$_\p{ID_Start}]/u.test(remainder);
 }
 
 function getAvailableSections(source) {
@@ -36,7 +29,7 @@ function getAvailableSections(source) {
   const hasRole = SECTION_NAMES.some((name) => ROLE_NAMES.has(name) && usedSections.has(name));
 
   return SECTION_NAMES.filter((name) => (
-    !usedSections.has(name) && !(hasRole && ROLE_NAMES.has(name))
+    (name === 'template' || !usedSections.has(name)) && !(hasRole && ROLE_NAMES.has(name))
   ));
 }
 

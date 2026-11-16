@@ -73,14 +73,57 @@ test('activates the completion provider for Oakalit documents', () => {
 
 test('suggests only unused top-level sections and a single role', () => {
   assert.deepEqual(getAvailableSections(''), [
-    'script', 'logic', 'render', 'component', 'page', 'module', 'main',
+    'script', 'logic', 'render', 'template', 'component', 'page', 'module', 'main',
   ]);
   assert.deepEqual(
     getAvailableSections('@main {\n  tag: "main-app"\n}\n'),
-    ['script', 'logic', 'render'],
+    ['script', 'logic', 'render', 'template'],
   );
   assert.equal(isTopLevel('@logic {\n  count = 0;\n'), false);
   assert.equal(isTopLevel('@logic {\n  count = 0;\n}\n'), true);
+  assert.ok(getAvailableSections('@template content {\n  <p>Content</p>\n}\n').includes('template'));
+  assert.equal(isTopLevel('@template content {\n  <p>Content</p>\n'), false);
+  assert.equal(isTopLevel('@template content {\n  <p>Content</p>\n}\n'), true);
+  assert.equal(isTopLevel('@template empty() {}\n'), true);
+  assert.equal(isTopLevel('@template content(\n'), false);
+  assert.equal(isTopLevel('@template content {\n${items.map(item => {\nreturn item;\n}\n'), false);
+});
+
+test('template grammar embeds HTML bodies and JavaScript parameters', () => {
+  const grammar = readJson('syntaxes/okalit.tmLanguage.json');
+  assert.ok(grammar.patterns.some(pattern => pattern.include === '#template-section'));
+  assert.match(grammar.repository['template-section'].begin, /@template/);
+  assert.ok(grammar.repository['template-parameters'].patterns.some(pattern => pattern.include === 'source.js'));
+  const body = grammar.repository['template-section'].patterns.find(pattern => pattern.name === 'meta.template.body.okalit');
+  assert.ok(body.patterns.some(pattern => pattern.include === '#interpolation'));
+  assert.ok(body.patterns.some(pattern => pattern.include === 'text.html.basic'));
+});
+
+test('template parsing handles nested expressions, multiline defaults and incomplete editing', () => {
+  const source = `@component { tag: 'test-template' }
+@template greeting(
+  { name } = { name: ')' },
+  callback = (value) => \`Hello \${value}\`
+) {
+  \${[name].map(value => {
+    return callback(value);
+  })}
+}
+@template content {
+  \${this.greeting()}
+}
+@logic {
+  check() { return this.content; }
+}
+`;
+  const virtual = createVirtualDocument(source, '/workspace/templates.ok', ts);
+  assert.match(virtual.code, /get content\(\)/);
+  assert.match(virtual.code, /greeting\(\s*\{ name \}/);
+  assert.match(virtual.code, /check\(\)/);
+  assert.equal(virtual.code[sourceOffsetToGenerated(virtual, source.indexOf('callback(value)'))], 'c');
+  for (const suffix of ['@template', '@template content(', '@template content {', '@template content {\n${this.']) {
+    assert.doesNotThrow(() => createVirtualDocument(`@component { tag: 'test-template' }\n${suffix}`, '/workspace/incomplete.ok', ts));
+  }
 });
 
 test('recognizes relative paths in ES module imports', () => {

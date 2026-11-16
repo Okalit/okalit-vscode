@@ -35,6 +35,10 @@ function activate(context) {
             vscode.CompletionItemKind.Keyword,
           );
           item.insertText = `@${name}`;
+          if (name === 'template') {
+            item.insertText = new vscode.SnippetString('@template ${1:content} {\n  $0\n}');
+            item.documentation = 'Reusable HTML fragment. Without parentheses: getter (this.content). With parentheses: method (this.content(...)).';
+          }
           item.range = replaceRange;
           item.detail = ['component', 'page', 'module', 'main'].includes(name)
             ? 'Oakalit role block'

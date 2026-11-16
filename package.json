@@ -2,7 +2,7 @@
   "name": "okalit-language-support",
   "displayName": "Okalit Language Support",
   "description": "Syntax highlighting for Okalit .ok files",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "publisher": "Okalit",
   "icon": "./okalit.png",
   "main": "./extension.js",

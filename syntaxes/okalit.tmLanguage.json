@@ -2,6 +2,9 @@
   "scopeName": "source.okalit",
   "patterns": [
     {
+      "include": "#template-section"
+    },
+    {
       "include": "#render-section"
     },
     {
@@ -15,6 +18,54 @@
     }
   ],
   "repository": {
+    "template-section": {
+      "name": "meta.section.template.okalit",
+      "begin": "^\\s*(@template)\\s+([$_\\p{L}][$_\\p{L}\\p{N}\\p{M}]*)(?=\\s*[({])",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.control.section.okalit"
+        },
+        "2": {
+          "name": "entity.name.function.okalit"
+        }
+      },
+      "end": "(?<=\\})\\s*$",
+      "patterns": [
+        {
+          "include": "#template-parameters"
+        },
+        {
+          "name": "meta.template.body.okalit",
+          "begin": "\\{",
+          "end": "^\\s*(\\})\\s*$|(?<=\\{)(\\})",
+          "patterns": [
+            {
+              "include": "#interpolation"
+            },
+            {
+              "include": "text.html.basic"
+            }
+          ]
+        }
+      ]
+    },
+    "template-parameters": {
+      "name": "meta.template.parameters.okalit",
+      "contentName": "source.js.embedded.okalit",
+      "begin": "\\(",
+      "end": "\\)",
+      "patterns": [
+        {
+          "include": "#template-parameters"
+        },
+        {
+          "include": "#nested-brace"
+        },
+        {
+          "include": "source.js"
+        }
+      ]
+    },
     "code-section": {
       "name": "meta.section.code.okalit",
       "begin": "^\\s*@(script|logic)\\s*(\\{)",

@@ -33,6 +33,46 @@ as class members. IntelliSense includes symbol completion, hover information,
 go-to-definition, find references, signature help, and mapped JavaScript
 diagnostics for those blocks.
 
+The virtual class uses the same role mixin as the compiler: `AppMixin` for
+`@main`, `PageMixin` for `@page`, `ModuleMixin` for `@module`, and the base
+`Okalit` class for `@component`. Inherited APIs such as `switchLocale`,
+`navigate`, and page route helpers are therefore available on the appropriate
+roles. For older core releases whose mixin JSDoc incorrectly returns only the
+base class, the editor infers the returned class instead. This adjustment is
+in memory only; it does not modify installed packages or suppress diagnostics.
+The same inference preserves `.value` on the core's signal wrappers, including
+`getI18n().locale.value`, when an older annotation names only the upstream
+signal class.
+
+### Project aliases
+
+Alias resolution reads the closest `tsconfig.json` or `jsconfig.json` for
+each importing file, including `extends`, `baseUrl`, and `paths`. This also
+applies to JavaScript modules imported by an `.ok` file. For example:
+
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@core/*": ["src/core/*"],
+      "@styles/*": ["src/styles/*"]
+    }
+  },
+  "include": ["src/**/*"]
+}
+```
+
+This enables imports such as
+`import { GlobalConfigChannel } from '@core/channels/config.channel.js'`.
+Keep these paths aligned with the aliases in your bundler configuration.
+The extension does not execute Rsbuild configuration files to discover aliases.
+Saving, creating, or deleting `jsconfig.json` or `tsconfig.json` refreshes open
+`.ok` diagnostics; configuration errors are reported as editor notifications.
+Reload the window after changing other files referenced through `extends`.
+Resolving existing alias imports and suggesting their symbols is supported;
+the separate file/folder path suggestions are still limited to relative paths.
+
 Reactive properties declared in the role's `props` are included in the virtual
 class used by IntelliSense. Both the named-object format and the legacy array
 of prop definitions work with `@component`, `@page`, `@module` and `@main`.
@@ -58,3 +98,47 @@ Run the manifest and grammar checks with:
 ```sh
 npm test
 ```
+
+## Reusable templates
+
+Top-level `@template` declarations can repeat. A declaration without parentheses
+generates a getter; a declaration with parentheses generates a method, even
+when the parameter list is empty:
+
+```okalit
+@page {
+  tag: 'example-home',
+}
+
+@template content {
+  <h1>Welcome</h1>
+}
+
+@template greeting(name) {
+  <p>Hello, ${name}</p>
+}
+
+@logic {
+  chooseContent(show) {
+    return show ? this.content : this.greeting('Ada');
+  }
+}
+
+@render {
+  ${this.chooseContent(true)}
+}
+```
+
+The `@` completion list always offers `@template`, including after previous
+template declarations. Names, parameters, template expressions, and render
+expressions participate in JavaScript completion, hover, definitions,
+references, signature help, and diagnostics. HTML is highlighted as HTML,
+while `${...}` and parameters are highlighted as JavaScript. Put a template's
+closing brace on its own line. Templates belong at the top level, not inside
+`@logic`; keep control flow in normal JavaScript methods.
+
+Use unique names that do not conflict with instance members in `@logic`.
+`render` and `constructor` are reserved. Rendering still uses Lit, including
+normal expressions and directives; raw `html`-returning methods remain valid.
+This syntax also requires the updated `@okalit/engine` compiler in the project;
+updating only the editor extension does not update the project's compiler.
