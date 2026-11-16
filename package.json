@@ -2,7 +2,7 @@
   "name": "okalit-language-support",
   "displayName": "Okalit Language Support",
   "description": "Syntax highlighting for Okalit .ok files",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "publisher": "Okalit",
   "icon": "./okalit.png",
   "main": "./extension.js",
@@ -37,19 +37,32 @@
       {
         "language": "okalit",
         "scopeName": "source.okalit",
-        "path": "./syntaxes/okalit.tmLanguage.json"
+        "path": "./syntaxes/okalit.tmLanguage.json",
+        "embeddedLanguages": {
+          "source.js.embedded.okalit": "javascript",
+          "meta.template.body.okalit": "html",
+          "meta.section.render.okalit": "html"
+        },
+        "tokenTypes": {
+          "meta.embedded.expression.okalit": "other"
+        }
       },
       {
         "scopeName": "okalit.html-injection",
         "path": "./syntaxes/okalit-html-injection.tmLanguage.json",
         "injectTo": [
-          "text.html.basic"
+          "text.html.basic",
+          "source.okalit"
         ]
       }
     ]
   },
   "dependencies": {
     "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.3.0"
   },
   "scripts": {
     "test": "node --test"

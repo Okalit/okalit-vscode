@@ -42,6 +42,90 @@ function query(source) {
 }
 
 for (const role of ['component', 'page', 'module', 'main']) {
+  test(`${role} channels expose runtime handles in logic, templates and render`, () => {
+    const source = `@${role} {
+  tag: 'channel-test',
+  channels: {
+    globalMenuChannel: GlobalMenuChannel(),
+    configChannel: GlobalConfigChannel('_onConfigHandler'),
+    'named-channel': NamedChannel(),
+    shorthandChannel,
+  }
+}
+@logic {
+  _onConfigHandler(config) {
+    this.configChannel.set({ ...this.configChannel.value, lang: 'en' });
+    this.globalMenuChannel.value.items.map(item => item);
+    this['named-channel'].set(true);
+    this.shorthandChannel.value;
+    this.configChannel.reset();
+    this.configChannel.unknown();
+    this.missingChannel.value;
+  }
+}
+@template menu {
+  <p>\${this.globalMenuChannel.value.items.length}</p>
+}
+@render {
+  <div .config=\${this.configChannel.value}>\${this.menu}</div>
+}
+`;
+    const result = query(source);
+    try {
+      const diagnostics = result.diagnostics();
+      assert.equal(diagnostics.length, 2, diagnostics.map(d => ts.flattenDiagnosticMessageText(d.messageText, '\n')).join('\n'));
+      assert.ok(diagnostics.every(d => [2339, 2551].includes(d.code)));
+      const completions = result.complete('this.configChannel.');
+      for (const name of ['value', 'set', 'reset']) assert.ok(completions.some(entry => entry.name === name));
+      const position = sourceOffsetToGenerated(result.virtual, source.indexOf('this.configChannel') + 6);
+      const definitions = result.service.getDefinitionAtPosition(result.virtual.fileName, position);
+      assert.ok(definitions.some(def =>
+        generatedSpanToSource(result.virtual, def.textSpan.start, def.textSpan.length)?.start === source.indexOf('configChannel:')));
+    } finally {
+      result.service.dispose();
+    }
+  });
+}
+
+test('explicit instance members retain their own types when named like a configured channel', () => {
+  const result = query(`@component {
+  tag: 'channel-test',
+  channels: { configChannel: ConfigChannel() }
+}
+@logic {
+  configChannel = { value: 1 };
+  check() { this.configChannel.value.toUpperCase(); }
+}
+`);
+  try {
+    assert.deepEqual(result.diagnostics().map(d => d.code), [2339]);
+    assert.equal((result.virtual.code.match(/configChannel =/g) || []).length, 1);
+  } finally {
+    result.service.dispose();
+  }
+});
+
+test('channel handles enforce read-only value access and do not invent missing cleanup methods', () => {
+  const result = query(`@component {
+  tag: 'channel-test',
+  channels: { configChannel: ConfigChannel() }
+}
+@logic {
+  check() {
+    this.configChannel.value = {};
+    this.configChannel.set({});
+    this._disposeConfig?.();
+  }
+}
+`);
+  try {
+    assert.deepEqual(result.diagnostics().map(d => d.code), [2540, 2339]);
+  } finally {
+    result.service.dispose();
+  }
+});
+
+for (const role of ['component', 'page', 'module', 'main']) {
   for (const legacy of [false, true]) {
     test(`${role} ${legacy ? 'legacy array' : 'object'} props expose reactive values and retain type errors`, () => {
       const definition = `components: { type: Array, value: [] },

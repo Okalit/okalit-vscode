@@ -89,6 +89,28 @@ being replaced by generated declarations. Unknown properties and incompatible
 typed assignments still produce diagnostics; this feature does not suppress
 JavaScript errors globally.
 
+### Channels
+
+Named entries in the role's `channels: { ... }` object are exposed as instance
+handles, including quoted names and shorthand entries, for all four roles.
+For example, `configChannel: GlobalConfigChannel('_onConfigHandler')` enables
+`this.configChannel.value`, `.set(value)` and `.reset()` in logic, render
+expressions and reusable templates. Definition navigation returns to the
+channel entry. Explicit instance members keep their own JavaScript inference.
+
+The handle follows the core API: `value` is read-only; use `set` to change it.
+Payloads currently remain broadly typed because the channel factory owns their
+schema, not the role declaration. This does not infer completion for fields
+inside `value` or validate payload shapes. Dynamically assembled channel maps
+(such as spreads or imported objects instead of a literal map) are not expanded.
+Unknown instance channel names and unknown handle methods still report errors.
+
+HTML interpolation uses JavaScript scopes in both `@render` and `@template`,
+including nested expressions, quoted attributes, and Lit event/property/boolean
+bindings. Literal HTML attribute text retains string highlighting. Embedded
+language metadata tells VS Code to treat the expressions as JavaScript; the
+active theme still decides the exact colors.
+
 After changing extension code, reload the Extension Development Host. An
 already-installed Marketplace version will only get these changes after a
 new extension release is installed.
@@ -98,6 +120,12 @@ Run the manifest and grammar checks with:
 ```sh
 npm test
 ```
+
+Highlighting integration tests tokenize the actual VS Code built-in HTML and
+JavaScript grammars with TextMate/Oniguruma. On nonstandard installations set
+`VSCODE_EXTENSIONS_PATH` to the editor's built-in `extensions` directory.
+That integration test reports a skip when these external grammars are absent;
+other extension tests do not require a VS Code installation.
 
 ## Reusable templates
 

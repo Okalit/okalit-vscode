@@ -1,7 +1,52 @@
 {
   "scopeName": "okalit.html-injection",
-  "injectionSelector": "L:source.okalit meta.section.render.okalit text.html.basic meta.tag",
+  "injectionSelector": "L:source.okalit meta.section.render.okalit - meta.embedded.expression.okalit, L:source.okalit meta.template.body.okalit - meta.embedded.expression.okalit",
   "patterns": [
+    {
+      "include": "source.okalit#interpolation"
+    },
+    {
+      "name": "meta.attribute.okalit",
+      "contentName": "string.quoted.double.html",
+      "begin": "([.@?]?[A-Za-z_][\\w:-]*)\\s*(=)\\s*(\")",
+      "beginCaptures": {
+        "1": { "name": "entity.other.attribute-name.okalit" },
+        "2": { "name": "punctuation.separator.key-value.html" },
+        "3": { "name": "punctuation.definition.string.begin.html" }
+      },
+      "end": "\"",
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.html" } },
+      "patterns": [
+        { "include": "source.okalit#interpolation" }
+      ]
+    },
+    {
+      "name": "meta.attribute.okalit",
+      "contentName": "string.quoted.single.html",
+      "begin": "([.@?]?[A-Za-z_][\\w:-]*)\\s*(=)\\s*(')",
+      "beginCaptures": {
+        "1": { "name": "entity.other.attribute-name.okalit" },
+        "2": { "name": "punctuation.separator.key-value.html" },
+        "3": { "name": "punctuation.definition.string.begin.html" }
+      },
+      "end": "'",
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.html" } },
+      "patterns": [
+        { "include": "source.okalit#interpolation" }
+      ]
+    },
+    {
+      "name": "meta.attribute.okalit",
+      "begin": "([.@?]?[A-Za-z_][\\w:-]*)\\s*(=)\\s*(?=\\$\\{)",
+      "beginCaptures": {
+        "1": { "name": "entity.other.attribute-name.okalit" },
+        "2": { "name": "punctuation.separator.key-value.html" }
+      },
+      "end": "(?<=\\})",
+      "patterns": [
+        { "include": "source.okalit#interpolation" }
+      ]
+    },
     {
       "match": "([.@])([A-Za-z_][\\w:-]*)(?=\\s*=)",
       "captures": {

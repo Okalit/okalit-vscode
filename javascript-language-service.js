@@ -178,6 +178,20 @@ function createVirtualDocument(source, filename, ts) {
     append(`() { throw new Error('Virtual reactive property'); }\n`);
     append(`/** @param {${prop.type} | ${signalType}} value */\nset ${prop.name}(value) {}\n`);
   }
+  for (const channel of extractChannels(sections, ts)) {
+    // Payload schemas belong to channel factories, not the role declaration.
+    append('\n/** @type {{readonly value: *, set: (value: *) => void, reset: () => void}} */\n');
+    const generatedStart = code.length;
+    append(channel.name);
+    segments.push({
+      sectionName: 'channel',
+      sourceStart: channel.sourceStart,
+      sourceEnd: channel.sourceStart + channel.name.length,
+      generatedStart,
+      generatedEnd: code.length,
+    });
+    append(' = undefined;\n');
+  }
   if (sections.has('logic')) append(sections.get('logic').body, 'logic');
   const appendMapped = (text, sourceStart, sectionName) => {
     const generatedStart = code.length;
@@ -210,6 +224,36 @@ function createVirtualDocument(source, filename, ts) {
     code,
     segments,
   };
+}
+
+function extractChannels(sections, ts) {
+  const role = ['component', 'page', 'module', 'main'].find(name => sections.has(name));
+  if (!role) return [];
+  const section = sections.get(role);
+  const prefix = 'const config = ({';
+  const file = ts.createSourceFile('channels.js', `${prefix}${section.body}});`, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  const config = file.statements[0]?.declarationList?.declarations[0]?.initializer?.expression;
+  const nameOf = node => node && (ts.isIdentifier(node) || ts.isStringLiteral(node)) ? node.text : undefined;
+  const channels = config?.properties?.find(property => nameOf(property.name) === 'channels');
+  const result = new Map();
+  if (channels && ts.isPropertyAssignment(channels) && ts.isObjectLiteralExpression(channels.initializer)) {
+    for (const property of channels.initializer.properties) {
+      const name = nameOf(property.name);
+      if (name === undefined || (!ts.isPropertyAssignment(property) && !ts.isShorthandPropertyAssignment(property))) continue;
+      result.set(name, {
+        name: property.name.getText(file),
+        sourceStart: section.bodyStart + property.name.getStart(file) - prefix.length,
+      });
+    }
+  }
+  const logic = sections.get('logic');
+  if (logic) {
+    const file = ts.createSourceFile('logic.js', `class Logic {${logic.body}}`, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+    for (const member of file.statements[0]?.members || []) {
+      if (!member.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.StaticKeyword)) result.delete(nameOf(member.name));
+    }
+  }
+  return [...result.values()];
 }
 
 function extractReactiveProps(sections, ts) {

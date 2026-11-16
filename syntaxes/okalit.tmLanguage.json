@@ -29,7 +29,7 @@
           "name": "entity.name.function.okalit"
         }
       },
-      "end": "(?<=\\})\\s*$",
+      "end": "^\\s*(\\})\\s*$|(?<=\\{)(\\})\\s*$",
       "patterns": [
         {
           "include": "#template-parameters"
@@ -37,7 +37,7 @@
         {
           "name": "meta.template.body.okalit",
           "begin": "\\{",
-          "end": "^\\s*(\\})\\s*$|(?<=\\{)(\\})",
+          "end": "(?=^\\s*\\}\\s*$)|(?<=\\{)(?=\\})",
           "patterns": [
             {
               "include": "#interpolation"
@@ -147,7 +147,7 @@
     "interpolation": {
       "name": "meta.embedded.expression.okalit",
       "contentName": "source.js.embedded.okalit",
-      "begin": "(\\$)(\\{)",
+      "begin": "(?<!\\\\)(\\$)(\\{)",
       "beginCaptures": {
         "1": {
           "name": "punctuation.definition.template-expression.begin.js"
